@@ -31,7 +31,7 @@ public class AppService {
 
 	public List<File> collectFiles(String mask) {
 		List<File> searchfiles;
-		searchfiles = DirectoryScanner.listf(new File(AppConfig.TDP_PATH), mask);
+		searchfiles = DirectoryScanner.listf(new File(AppConfig.getTdpPath()), mask);
 		return searchfiles;
 	}
 
@@ -59,7 +59,7 @@ public class AppService {
 				}
 			}
 			Splitter splitter = Splitter.on("\\");
-			String path = splitter.splitToList(entry.getKey().getAbsolutePath().replace(AppConfig.TDP_PATH + "\\", ""))
+			String path = splitter.splitToList(entry.getKey().getAbsolutePath().replace(AppConfig.getTdpPath() + "\\", ""))
 					.get(0).replace(".gradle", "").replace("settings-", "");
 
 			propsMap.put(path, props);
@@ -124,7 +124,7 @@ public class AppService {
 					String fileName = entry.getKey();
 					fileName += File.separator + "libs_tdp" + File.separator + libsProp.get(1) + ".properties";
 
-					new File(AppConfig.TDP_NEW_PATH + File.separator + entry.getKey() + File.separator + "libs_tdp")
+					new File(AppConfig.getNewTdpPath() + File.separator + entry.getKey() + File.separator + "libs_tdp")
 							.mkdir();
 
 					Map<String, String> propMap = propFilesMap.get(fileName);
@@ -147,9 +147,9 @@ public class AppService {
 			Map<String, String> props = entry.getValue();
 			String text = Joiner.on("\n").withKeyValueSeparator("=").join(props);
 			String fileName = entry.getKey();
-			LOG.info(AppConfig.TDP_NEW_PATH + File.separator + fileName);
-			String textFile = AppConfig.TDP_NEW_PATH + File.separator + fileName;
-			new File(AppConfig.TDP_NEW_PATH + File.separator + fileName.replace(new File(fileName).getName(),"")).mkdirs();
+			LOG.info(AppConfig.getNewTdpPath() + File.separator + fileName);
+			String textFile = AppConfig.getNewTdpPath() + File.separator + fileName;
+			new File(AppConfig.getNewTdpPath() + File.separator + fileName.replace(new File(fileName).getName(),"")).mkdirs();
 			FileSaver.save(textFile, text);
 
 		}
@@ -170,7 +170,7 @@ public class AppService {
 					splitter = Splitter.on("//");
 					if (resultSplit.size() > 1) {
 						resultSplit = splitter.splitToList(resultSplit.get(1));
-						files.add(new File(AppConfig.TDP_PATH + "/"
+						files.add(new File(AppConfig.getTdpPath() + "/"
 								+ resultSplit.get(0).replaceAll("'", "").replaceAll("\"", "").trim()));
 					}
 				}
@@ -211,7 +211,7 @@ public class AppService {
 
 						for (String path : paths) {
 
-							files.add(new File(AppConfig.TDP_PATH + File.separator + path));
+							files.add(new File(AppConfig.getTdpPath() + File.separator + path));
 						}
 					}
 				}
@@ -223,10 +223,10 @@ public class AppService {
 	public void copyFilesByUmbrella(Map<File, List<File>> umbrellas) {
 		for (Entry<File, List<File>> entry : umbrellas.entrySet()) {
 			String layer =  entry.getKey().getName().replace(".gradle", "").replace("settings-", "");
-			File layerPath = new File(AppConfig.TDP_NEW_PATH  + File.separator + layer);
+			File layerPath = new File(AppConfig.getNewTdpPath()  + File.separator + layer);
 			
 			for (File file : entry.getValue()) {
-				File destinaton = new File(file.getAbsolutePath().replace(AppConfig.TDP_PATH, layerPath.toString()));
+				File destinaton = new File(file.getAbsolutePath().replace(AppConfig.getTdpPath(), layerPath.toString()));
 				try {
 					FileUtils.copyDirectory(file, destinaton);
 					LOG.info("Copy: " + file + " -> " + destinaton);
@@ -238,10 +238,10 @@ public class AppService {
 			try {
 				FileUtils.copyFileToDirectory(entry.getKey(),layerPath);
 				new File(layerPath + File.separator + entry.getKey().getName()).renameTo(new File(layerPath + File.separator + "settings.gradle"));	
-				FileUtils.copyFileToDirectory(new File(AppConfig.TDP_PATH + "/build.gradle"), layerPath);
-				FileUtils.copyFileToDirectory(new File(AppConfig.TDP_PATH + "/component_version.properties"), layerPath);
-				FileUtils.copyFileToDirectory(new File(AppConfig.TDP_PATH + "/startup.gradle"), layerPath);
-				FileUtils.copyFileToDirectory(new File(AppConfig.TDP_PATH + "/gradle.properties"), layerPath);
+				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + "/build.gradle"), layerPath);
+				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + "/component_version.properties"), layerPath);
+				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + "/startup.gradle"), layerPath);
+				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + "/gradle.properties"), layerPath);
 				
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -255,7 +255,7 @@ public class AppService {
 		for (File file : pluginPropFiles) {
 			try {
 				((Properties) properties).load((InputStream) new FileInputStream(file));
-				String path = (AppConfig.GRADLE_PLUGINS_PATH + File.separator + "gradle-plugins" + File.separator
+				String path = (AppConfig.getGradlePluginsPath() + File.separator + "gradle-plugins" + File.separator
 						+ "src" + File.separator + "main" + File.separator + "groovy" + File.separator
 						+ (String) properties.get("implementation-class")).replace(".", File.separator) + ".groovy";
 				path = pluginProp.put(file.getName().replace(".properties", ""), path);

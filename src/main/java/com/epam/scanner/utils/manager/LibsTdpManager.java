@@ -25,11 +25,11 @@ public class LibsTdpManager {
 
 	public static List<String> getProperty(String key) {
 		try {
-			libsTdp.load((InputStream) new FileInputStream(new File(AppConfig.TDP_LIBS + "/" + "libs_tdp.properties")));
-			libsTdp_1_3.load((InputStream) new FileInputStream(new File(AppConfig.TDP_LIBS + "/" + "libs_tdp_1_3.properties")));
-			libsTdp_3_0.load((InputStream) new FileInputStream(new File(AppConfig.TDP_LIBS + "/" + "libs_tdp_3_0.properties")));
-			libsTdp_3_1.load((InputStream) new FileInputStream(new File(AppConfig.TDP_LIBS + "/" + "libs_tdp_3_1.properties")));
-			libsTdp_4_0.load((InputStream) new FileInputStream(new File(AppConfig.TDP_LIBS + "/" + "libs_tdp_4_0.properties")));
+			libsTdp.load((InputStream) new FileInputStream(new File(AppConfig.getTdpLibsPath() + "/" + "libs_tdp.properties")));
+			libsTdp_1_3.load((InputStream) new FileInputStream(new File(AppConfig.getTdpLibsPath()  + "/" + "libs_tdp_1_3.properties")));
+			libsTdp_3_0.load((InputStream) new FileInputStream(new File(AppConfig.getTdpLibsPath()  + "/" + "libs_tdp_3_0.properties")));
+			libsTdp_3_1.load((InputStream) new FileInputStream(new File(AppConfig.getTdpLibsPath() + "/" + "libs_tdp_3_1.properties")));
+			libsTdp_4_0.load((InputStream) new FileInputStream(new File(AppConfig.getTdpLibsPath() + "/" + "libs_tdp_4_0.properties")));
 		} catch (IOException e5) {
 			e5.printStackTrace();
 		}
