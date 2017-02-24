@@ -1,1 +1,1 @@
-java -jar lib/scanner-1.0.jar com.epam.scanner.app.App
+java -jar lib/scanner_tool-1.0.jar com.epam.scanner.ui.AppWindow

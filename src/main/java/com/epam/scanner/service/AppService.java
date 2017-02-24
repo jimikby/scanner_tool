@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +15,9 @@ import java.util.Properties;
 import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -20,9 +25,7 @@ import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.epam.scanner.config.AppConfig;
-import com.epam.scanner.utils.DirectoryScanner;
-import com.epam.scanner.utils.FileReader;
-import com.epam.scanner.utils.FileSaver;
+import com.epam.scanner.ui.AppWindow;
 import com.epam.scanner.utils.manager.LibsTdpManager;
 
 public class AppService {
@@ -31,36 +34,44 @@ public class AppService {
 
 	public List<File> collectFiles(String mask) {
 		List<File> searchfiles;
-		searchfiles = DirectoryScanner.listf(new File(AppConfig.getTdpPath()), mask);
+		searchfiles = listf(new File(AppConfig.getTdpPath()), mask);
 		return searchfiles;
 	}
 
 	public List<File> collectFiles(String mask, String path) {
 		List<File> searchfiles;
-		searchfiles = DirectoryScanner.listf(new File(path), mask);
+		searchfiles = listf(new File(path), mask);
 		return searchfiles;
 	}
 
 	public Map<String, List<String>> collectDependencies(Map<File, List<File>> umbrellas,
 			Map<String, List<String>> groovyPluginProps, String fileType) {
 		Map<String, List<String>> propsMap = new HashMap<>();
+
+		float step = 35 / (float) umbrellas.entrySet().size();
+		float f = AppWindow.getInstance().getProgressBarValue();
+
 		for (Entry<File, List<File>> entry : umbrellas.entrySet()) {
 			List<String> props = new ArrayList<>();
+			f += step;
 			for (File file : entry.getValue()) {
+
 				List<File> searchfiles = new ArrayList<>();
 				if (file.isDirectory()) {
-					searchfiles = DirectoryScanner.listf(file, "*." + fileType);
+					searchfiles = listf(file, "*." + fileType);
 				}
 				if (!searchfiles.isEmpty()) {
 					for (File gradleFile : searchfiles) {
 						props.addAll(scanFileForProperties(gradleFile, groovyPluginProps));
+						AppWindow.getInstance().setProgressBarValue((int) f);
 
 					}
 				}
 			}
 			Splitter splitter = Splitter.on("\\");
-			String path = splitter.splitToList(entry.getKey().getAbsolutePath().replace(AppConfig.getTdpPath() + "\\", ""))
-					.get(0).replace(".gradle", "").replace("settings-", "");
+			String path = splitter
+					.splitToList(entry.getKey().getAbsolutePath().replace(AppConfig.getTdpPath() + "\\", "")).get(0)
+					.replace(".gradle", "").replace("settings-", "");
 
 			propsMap.put(path, props);
 		}
@@ -69,7 +80,7 @@ public class AppService {
 
 	private List<String> scanFileForProperties(File gradleFile, Map<String, List<String>> groovyPluginProps) {
 		List<String> props = new ArrayList<>();
-		String text = FileReader.read(gradleFile).replaceAll(" ", "").replace("\"", "'").replace("project.property",
+		String text = readFile(gradleFile).replaceAll(" ", "").replace("\"", "'").replace("project.property",
 				"property");
 		Splitter splitter = Splitter.on(CharMatcher.anyOf("\n\r")).omitEmptyStrings();
 		List<String> result = splitter.splitToList(text);
@@ -84,6 +95,7 @@ public class AppService {
 					String plugin = splitter.splitToList(resultSplit.get(1)).get(0);
 					if (groovyPluginProps.containsKey(plugin) && !groovyPluginProps.get(plugin).isEmpty()) {
 						LOG.info(gradleFile + "; " + plugin);
+						AppWindow.getInstance().setLabelValue("Collecting dependencies: " + gradleFile);
 						props.addAll(groovyPluginProps.get(plugin));
 					}
 				}
@@ -121,7 +133,7 @@ public class AppService {
 				String propName = prop;
 
 				if (propValue != null) {
-					String fileName = entry.getKey();
+					String fileName = entry.getKey() +"-component";
 					fileName += File.separator + "libs_tdp" + File.separator + libsProp.get(1) + ".properties";
 
 					new File(AppConfig.getNewTdpPath() + File.separator + entry.getKey() + File.separator + "libs_tdp")
@@ -149,8 +161,13 @@ public class AppService {
 			String fileName = entry.getKey();
 			LOG.info(AppConfig.getNewTdpPath() + File.separator + fileName);
 			String textFile = AppConfig.getNewTdpPath() + File.separator + fileName;
-			new File(AppConfig.getNewTdpPath() + File.separator + fileName.replace(new File(fileName).getName(),"")).mkdirs();
-			FileSaver.save(textFile, text);
+			new File(AppConfig.getNewTdpPath() + File.separator + fileName.replace(new File(fileName).getName(), ""))
+					.mkdirs();
+			if (textFile.contains("libs_tdp_1_3")) {
+				saveFile(textFile.replace("libs_tdp_1_3", "libs_tdp_3_0"), text);
+				saveFile(textFile.replace("libs_tdp_1_3", "libs_tdp_3_1"), text);
+			}
+			saveFile(textFile, text);
 
 		}
 	}
@@ -158,7 +175,7 @@ public class AppService {
 	public Map<File, List<File>> findUmbrellas(List<File> searchfiles) {
 		Map<File, List<File>> filterFiles = new HashMap<>();
 		for (File file : searchfiles) {
-			String text = FileReader.read(file);
+			String text = readFile(file);
 			Splitter splitter = Splitter.on(CharMatcher.anyOf("\r\n")).omitEmptyStrings();
 
 			List<String> result = splitter.splitToList(text);
@@ -197,7 +214,7 @@ public class AppService {
 		for (File file : list) {
 			File settingsFile = new File(file.getAbsolutePath() + File.separator + "settings.gradle");
 			if (settingsFile.exists()) {
-				text = FileReader.read(settingsFile);
+				text = readFile(settingsFile);
 				Splitter splitter = Splitter.on(CharMatcher.anyOf("\r\n")).omitEmptyStrings();
 				List<String> result = splitter.splitToList(text);
 				for (String line : result) {
@@ -221,28 +238,46 @@ public class AppService {
 	}
 
 	public void copyFilesByUmbrella(Map<File, List<File>> umbrellas) {
+		
+		int size = 0;
+		float f = AppWindow.getInstance().getProgressBarValue();
+		
 		for (Entry<File, List<File>> entry : umbrellas.entrySet()) {
-			String layer =  entry.getKey().getName().replace(".gradle", "").replace("settings-", "");
-			File layerPath = new File(AppConfig.getNewTdpPath()  + File.separator + layer);
-			
+			size += entry.getValue().size();
+		}
+	
+		float step = 39 / (float) size;
+		for (Entry<File, List<File>> entry : umbrellas.entrySet()) {
+			String layer = entry.getKey().getName().replace(".gradle", "").replace("settings-", "");
+			File layerPath = new File(AppConfig.getNewTdpPath() + File.separator + layer + "-component");
+
 			for (File file : entry.getValue()) {
-				File destinaton = new File(file.getAbsolutePath().replace(AppConfig.getTdpPath(), layerPath.toString()));
+				f += step;
+				File destinaton = new File(
+						file.getAbsolutePath().replace(AppConfig.getTdpPath(), layerPath.toString()));
 				try {
 					FileUtils.copyDirectory(file, destinaton);
 					LOG.info("Copy: " + file + " -> " + destinaton);
+					AppWindow.getInstance().setLabelValue("Copying files: " + destinaton);
+					AppWindow.getInstance().setProgressBarValue((int) f);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 
 			}
 			try {
-				FileUtils.copyFileToDirectory(entry.getKey(),layerPath);
-				new File(layerPath + File.separator + entry.getKey().getName()).renameTo(new File(layerPath + File.separator + "settings.gradle"));	
-				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + "/build.gradle"), layerPath);
-				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + "/component_version.properties"), layerPath);
-				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + "/startup.gradle"), layerPath);
-				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + "/gradle.properties"), layerPath);
-				
+				FileUtils.copyFileToDirectory(entry.getKey(), layerPath);
+				new File(layerPath + File.separator + entry.getKey().getName())
+						.renameTo(new File(layerPath + File.separator + "settings.gradle"));
+				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + File.separator + "build.gradle"),
+						layerPath);
+				FileUtils.copyFileToDirectory(
+						new File(AppConfig.getTdpPath() + File.separator + "component_version.properties"), layerPath);
+				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + File.separator + "startup.gradle"),
+						layerPath);
+				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + File.separator + "gradle.properties"),
+						layerPath);
+
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -273,6 +308,67 @@ public class AppService {
 			propsMap.put(entry.getKey(), scanFileForProperties(new File(entry.getValue()), fakeMap));
 		}
 		return propsMap;
+	}
+
+	public List<File> listOfFiles(File root, String mask) {
+		File[] listOfFiles = root.listFiles();
+		List<File> files = new ArrayList<>();
+		IOFileFilter fileFilter = new WildcardFileFilter(mask);
+		for (File file : listOfFiles) {
+			if (file.isFile() && fileFilter.accept(file)) {
+				files.add(file);
+			}
+		}
+		return files;
+	}
+
+	public List<File> listf(File root, String fileNames) {
+		Collection<File> files = new ArrayList<File>();
+		try {
+
+			IOFileFilter fileFilter = new WildcardFileFilter(fileNames);
+			files = FileUtils.listFiles(root, fileFilter, TrueFileFilter.TRUE);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return (List<File>) files;
+	}
+
+	public String readFile(File file) {
+		String text = null;
+		try {
+			@SuppressWarnings("resource")
+			FileInputStream inFile = new FileInputStream(file);
+			byte[] str = new byte[inFile.available()];
+			inFile.read(str);
+			text = new String(str);
+		} catch (IOException c) {
+			LOG.fatal("File " + file + " not found.");
+			throw new RuntimeException(c);
+		}
+		return text;
+	}
+
+	public String readFile(String file) {
+		return readFile(new File(file));
+
+	}
+
+	public void saveFile(String fileName, String text) {
+		File file = new File(fileName);
+		try {
+			file.createNewFile();
+			PrintWriter out = new PrintWriter(file.getAbsoluteFile());
+			try {
+				out.print(text);
+			} finally {
+				out.close();
+			}
+		} catch (IOException e) {
+			LOG.fatal("RuntimeException " + fileName + ";" + e);
+			throw new RuntimeException(e);
+		}
 	}
 
 }

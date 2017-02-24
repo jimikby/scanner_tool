@@ -7,7 +7,6 @@ public class AppConfig {
 	private static String tdpPath  = ConfigurationManager.getProperty("tdp.path");
 	private static String newTdpPath = ConfigurationManager.getProperty("tdp.new.path");
 	private static String gradlePluginsPath = ConfigurationManager.getProperty("gradle.plugins.path");
-	private static String tdpLibsPath  = ConfigurationManager.getProperty("tdp.libs");
 	private static String component;
 	
 	public static String getComponent() {
@@ -42,14 +41,4 @@ public class AppConfig {
 	public static void setGradlePluginsPath(String gradlePluginsPath) {
 		AppConfig.gradlePluginsPath = gradlePluginsPath;
 	}
-	public static String getTdpLibsPath() {
-		return tdpLibsPath;
-	}
-	
-	public static void setTdpLibsPath(String tdpLibsPath) {
-		AppConfig.tdpLibsPath = tdpLibsPath;
-	}
-	
-	
-	
 }
