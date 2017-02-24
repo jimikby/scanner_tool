@@ -152,7 +152,7 @@ public class AppWindow {
 
 							appService.saveFiles(props);
 
-							setProgressBarValue(60);
+							setProgressBarValue(40);
 
 							setLabelValue("Copying files");
 

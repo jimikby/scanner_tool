@@ -48,7 +48,7 @@ public class AppService {
 			Map<String, List<String>> groovyPluginProps, String fileType) {
 		Map<String, List<String>> propsMap = new HashMap<>();
 
-		float step = 35 / (float) umbrellas.entrySet().size();
+		float step = 20 / (float) umbrellas.entrySet().size();
 		float f = AppWindow.getInstance().getProgressBarValue();
 
 		for (Entry<File, List<File>> entry : umbrellas.entrySet()) {
@@ -246,20 +246,21 @@ public class AppService {
 			size += entry.getValue().size();
 		}
 	
-		float step = 39 / (float) size;
+		float step = (99.9f - (float)AppWindow.getInstance().getProgressBarValue()) / (float) size;
 		for (Entry<File, List<File>> entry : umbrellas.entrySet()) {
 			String layer = entry.getKey().getName().replace(".gradle", "").replace("settings-", "");
 			File layerPath = new File(AppConfig.getNewTdpPath() + File.separator + layer + "-component");
 
 			for (File file : entry.getValue()) {
 				f += step;
+				AppWindow.getInstance().setProgressBarValue((int) f);
 				File destinaton = new File(
 						file.getAbsolutePath().replace(AppConfig.getTdpPath(), layerPath.toString()));
 				try {
 					FileUtils.copyDirectory(file, destinaton);
 					LOG.info("Copy: " + file + " -> " + destinaton);
 					AppWindow.getInstance().setLabelValue("Copying files: " + destinaton);
-					AppWindow.getInstance().setProgressBarValue((int) f);
+			
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
