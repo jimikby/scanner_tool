@@ -39,15 +39,29 @@ distributions {
 
 		contents {
 			into ("/") {
-			from 'distr'
+				from 'distr'
 			}
 			into ("/lib") {
-			from jar
+				from jar
 			}
 			into ("/") {
 				from ("/")
 				include "config.properties"
 			}
+			
+			into ("/sources/src") {
+				from 'src'
+			}
+				into ("/sources/distr") {
+				from 'distr'
+			}
+			into ("/sources") {
+				from '/'
+				include 'build.gradle'
+			}
 		}
 	}
 }
+
+
+
