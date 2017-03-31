@@ -164,7 +164,8 @@ public class AppWindow {
 					 }
 
 					 protected void done() {
-					  boolean status;
+					  @SuppressWarnings("unused")
+					boolean status;
 					  try {
 					   // Retrieve the return value of doInBackground.
 					   status = get();

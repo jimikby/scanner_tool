@@ -2,6 +2,8 @@ package com.epam.scanner.service;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -26,11 +28,15 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.epam.scanner.config.AppConfig;
 import com.epam.scanner.ui.AppWindow;
+import com.epam.scanner.utils.manager.ComponentVersionManager;
 import com.epam.scanner.utils.manager.LibsTdpManager;
 
 public class AppService {
 
 	private static final Logger LOG = LogManager.getLogger(AppService.class);
+	private Map<String, Properties> componentsVersion = new HashMap<>();
+
+	private Map<String, String> msg;
 
 	public List<File> collectFiles(String mask) {
 		List<File> searchfiles;
@@ -72,7 +78,6 @@ public class AppService {
 			String path = splitter
 					.splitToList(entry.getKey().getAbsolutePath().replace(AppConfig.getTdpPath() + "\\", "")).get(0)
 					.replace(".gradle", "").replace("settings-", "");
-
 			propsMap.put(path, props);
 		}
 		return propsMap;
@@ -80,40 +85,48 @@ public class AppService {
 
 	private List<String> scanFileForProperties(File gradleFile, Map<String, List<String>> groovyPluginProps) {
 		List<String> props = new ArrayList<>();
-		String text = readFile(gradleFile).replaceAll(" ", "").replace("\"", "'").replace("project.property",
+		String text = readFile(gradleFile).replaceAll("\t", "").replaceAll(" ", "").replace("\"", "'").replace("project.property",
 				"property");
 		Splitter splitter = Splitter.on(CharMatcher.anyOf("\n\r")).omitEmptyStrings();
 		List<String> result = splitter.splitToList(text);
 		List<String> resultSplit = new ArrayList<>();
 		for (String line : result) {
-			if (groovyPluginProps != null) {
-				splitter = Splitter.on("applyplugin:'");
+			if (!line.matches("^//.*")) {
+				if (groovyPluginProps != null) {
+					splitter = Splitter.on("applyplugin:'");
+					resultSplit = splitter.splitToList(line);
+
+					if (resultSplit.size() > 1) {
+						splitter = Splitter.on("'");
+						String plugin = splitter.splitToList(resultSplit.get(1)).get(0);
+						if (groovyPluginProps.containsKey(plugin) && !groovyPluginProps.get(plugin).isEmpty()) {
+							LOG.info(gradleFile + "; " + plugin);
+							AppWindow.getInstance().setLabelValue("Collecting dependencies: " + gradleFile);
+							props.addAll(groovyPluginProps.get(plugin));
+						}
+					}
+				}
+
+				splitter = Splitter.on("property('");
 				resultSplit = splitter.splitToList(line);
 
 				if (resultSplit.size() > 1) {
-					splitter = Splitter.on("'");
-					String plugin = splitter.splitToList(resultSplit.get(1)).get(0);
-					if (groovyPluginProps.containsKey(plugin) && !groovyPluginProps.get(plugin).isEmpty()) {
-						LOG.info(gradleFile + "; " + plugin);
-						AppWindow.getInstance().setLabelValue("Collecting dependencies: " + gradleFile);
-						props.addAll(groovyPluginProps.get(plugin));
+					splitter = Splitter.on("')");
+					resultSplit = splitter.splitToList(resultSplit.get(1));
+					String prop = resultSplit.get(0);
+					if (!prop.equals("gradle.plugin.version")) {
+
+						splitter = Splitter.on("\\");
+						props.add(prop);
+
+					}
+
+					if (prop.contains("component.")) {
+						LOG.info(gradleFile + ": " + prop);
 					}
 				}
-			}
-
-			splitter = Splitter.on("property('");
-			resultSplit = splitter.splitToList(line);
-
-			if (resultSplit.size() > 1) {
-				splitter = Splitter.on("')");
-				resultSplit = splitter.splitToList(resultSplit.get(1));
-				String prop = resultSplit.get(0);
-				if (!prop.equals("gradle.plugin.version") && !prop.contains("component.")) {
-
-					splitter = Splitter.on("\\");
-					props.add(prop);
-
-				}
+			} else {
+				LOG.warn(line);
 			}
 		}
 		return props;
@@ -127,31 +140,50 @@ public class AppService {
 
 			for (String prop : entry.getValue()) {
 
-				List<String> libsProp = LibsTdpManager.getProperty(prop);
+				if (!prop.contains("component.")) {
 
-				String propValue = libsProp.get(0);
-				String propName = prop;
+					List<String> libsProp = LibsTdpManager.getProperty(prop);
 
-				if (propValue != null) {
-					String fileName = entry.getKey() +"-component";
-					fileName += File.separator + "libs_tdp" + File.separator + libsProp.get(1) + ".properties";
+					String propValue = libsProp.get(0);
+					String propName = prop;
 
-					new File(AppConfig.getNewTdpPath() + File.separator + entry.getKey() + File.separator + "libs_tdp")
-							.mkdir();
+					if (propValue != null) {
+						String fileName = entry.getKey() + "-component";
+						fileName += File.separator + "libs_tdp" + File.separator + libsProp.get(1) + ".properties";
 
-					Map<String, String> propMap = propFilesMap.get(fileName);
-					if (propMap != null) {
-						propMap.put(propName, propValue);
-						propFilesMap.put(fileName, propMap);
+						File workDir = new File(AppConfig.getNewTdpPath() + File.separator + entry.getKey()
+								+ File.separator + "libs_tdp");
+
+						if (!workDir.exists()) {
+							workDir.mkdir();
+						}
+
+						Map<String, String> propMap = propFilesMap.get(fileName);
+						if (propMap != null) {
+							propMap.put(propName, propValue);
+							propFilesMap.put(fileName, propMap);
+						} else {
+							Map<String, String> newPropMap = new TreeMap<>();
+							newPropMap.put(propName, propValue);
+							propFilesMap.put(fileName, newPropMap);
+						}
 					} else {
-						Map<String, String> newPropMap = new TreeMap<>();
-						newPropMap.put(propName, propValue);
-						propFilesMap.put(fileName, newPropMap);
+						LOG.info("Property '" + prop + "' doesn't found in " + libsProp.get(1));
 					}
 				} else {
-					LOG.info(libsProp);
+					Properties props = null;
+					if (componentsVersion.get(entry.getKey()) != null) {
+						props = componentsVersion.get(entry.getKey());
+						props.setProperty(prop, ComponentVersionManager.getProperty(prop));
+						componentsVersion.put(entry.getKey(), props);
+					} else {
+						props = new Properties();
+						props.setProperty(prop, ComponentVersionManager.getProperty(prop));
+						componentsVersion.put(entry.getKey(), props);
+					}
 				}
 			}
+
 		}
 
 		for (Map.Entry<String, Map<String, String>> entry : propFilesMap.entrySet()) {
@@ -238,15 +270,15 @@ public class AppService {
 	}
 
 	public void copyFilesByUmbrella(Map<File, List<File>> umbrellas) {
-		
+
 		int size = 0;
 		float f = AppWindow.getInstance().getProgressBarValue();
-		
+
 		for (Entry<File, List<File>> entry : umbrellas.entrySet()) {
 			size += entry.getValue().size();
 		}
-	
-		float step = (99.9f - (float)AppWindow.getInstance().getProgressBarValue()) / (float) size;
+
+		float step = (99.9f - (float) AppWindow.getInstance().getProgressBarValue()) / (float) size;
 		for (Entry<File, List<File>> entry : umbrellas.entrySet()) {
 			String layer = entry.getKey().getName().replace(".gradle", "").replace("settings-", "");
 			File layerPath = new File(AppConfig.getNewTdpPath() + File.separator + layer + "-component");
@@ -256,14 +288,15 @@ public class AppService {
 				AppWindow.getInstance().setProgressBarValue((int) f);
 				File destinaton = new File(
 						file.getAbsolutePath().replace(AppConfig.getTdpPath(), layerPath.toString()));
-				try {
-					FileUtils.copyDirectory(file, destinaton);
-					LOG.info("Copy: " + file + " -> " + destinaton);
-					AppWindow.getInstance().setLabelValue("Copying files: " + destinaton);
-			
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				 try {
+				 FileUtils.copyDirectory(file, destinaton);
+				 LOG.info("Copy: " + file + " -> " + destinaton);
+				 AppWindow.getInstance().setLabelValue("Copying files: " +
+				 destinaton);
+				
+				 } catch (IOException e) {
+				 e.printStackTrace();
+				 }
 
 			}
 			try {
@@ -272,12 +305,21 @@ public class AppService {
 						.renameTo(new File(layerPath + File.separator + "settings.gradle"));
 				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + File.separator + "build.gradle"),
 						layerPath);
-				FileUtils.copyFileToDirectory(
-						new File(AppConfig.getTdpPath() + File.separator + "component_version.properties"), layerPath);
 				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + File.separator + "startup.gradle"),
 						layerPath);
 				FileUtils.copyFileToDirectory(new File(AppConfig.getTdpPath() + File.separator + "gradle.properties"),
 						layerPath);
+
+				try {
+					LOG.info(layer);
+					componentsVersion.get(layer).store(
+							new FileOutputStream(new File(layerPath + File.separator + "component_version.properties")),
+							"#tokens are replaced at DlexConfigPlugin during build process depends on choosen platform (tdp_3_0 is default)\r\n#platform can be =tdp_4_0_eap, =tdp_4_0_wildfly, =tdp_3_0, =tdp_3_1, =tdp_1_3\r\n#following tokens can be used also (there is example of value)\r\n#dlex.platform.tdp=tdp_4_0\r\n#dlex.platform.jboss=jboss_7_0_0\r\n#dlex.platform.tomcat=tomcat_8_0_30\r\n#dlex.platform.http=apache_2_4\r\n#dlex.platform.java=1.8");
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -287,6 +329,7 @@ public class AppService {
 
 	public Map<String, String> collectPropertiesFromGroovyPlugins(List<File> pluginPropFiles) {
 		Map<String, String> pluginProp = new HashMap<>();
+		@SuppressWarnings("rawtypes")
 		Map properties = new Properties();
 		for (File file : pluginPropFiles) {
 			try {
@@ -323,6 +366,7 @@ public class AppService {
 		return files;
 	}
 
+	@SuppressWarnings("unchecked")
 	public List<File> listf(File root, String fileNames) {
 		Collection<File> files = new ArrayList<File>();
 		try {

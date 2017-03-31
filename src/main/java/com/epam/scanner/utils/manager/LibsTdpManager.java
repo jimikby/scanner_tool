@@ -6,9 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.MissingResourceException;
 import java.util.Properties;
-import java.util.ResourceBundle;
 
 import com.epam.scanner.config.AppConfig;
 
@@ -19,11 +17,8 @@ public class LibsTdpManager {
 	private final static Properties libsTdp_3_0 = new Properties();
 	private final static Properties libsTdp_3_1 = new Properties();
 	private final static Properties libsTdp_4_0 = new Properties();
-
-	private LibsTdpManager() {
-	}
-
-	public static List<String> getProperty(String key) {
+	
+	static {
 		try {
 			libsTdp.load((InputStream) new FileInputStream(
 					new File(AppConfig.getTdpPath() + File.separator + "libs_tdp" + File.separator + "libs_tdp.properties")));
@@ -38,9 +33,15 @@ public class LibsTdpManager {
 		} catch (IOException e5) {
 			e5.printStackTrace();
 		}
+	}
+	
+	private LibsTdpManager() {
+	}
+	
+
+	public static List<String> getProperty(String key) {
 
 		List<String> values = new ArrayList<>();
-		
 	
 		 values.add(libsTdp.getProperty(key));
 		 values.add("libs_tdp");
@@ -64,8 +65,7 @@ public class LibsTdpManager {
 			values.set(0,libsTdp_4_0.getProperty(key));
 			values.set(1,"libs_tdp_4_0");
 		 }
-		 
-		
+		 	
 		return values;
 
 	}

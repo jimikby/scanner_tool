@@ -1,0 +1,37 @@
+
+import groovy.json.*
+
+Json json = new Json()
+fileTree(dir: "/", include: '**/component_version.properties').each {
+	println it
+	def split = it.toString().tokenize(File.separator)
+	def component = split[2].replace("-component","")
+	List<String> components = new ArrayList<String>()
+
+	def pattern = java.util.regex.Pattern.compile('(?<=component\\.)+(.?)+(?=\\.version)')
+   def matcher = pattern.matcher(it.text)
+   def buffer = new StringBuffer()
+   while (matcher.find()) {
+		def foundComponent = matcher.group(0).replace(".","-");
+		if (foundComponent != component) {
+			components.add (foundComponent)
+		}
+	}
+
+	json.map.put(component,components)
+
+}
+
+class Json {
+	Map map = new TreeMap()
+
+	String write() {
+		String write = 'digraph {\r\n'
+	map.each{ k, v -> v.each {write += "\"${k}\" -> \"${it}\";\r\n"} }
+write += '}\r\n'
+		}
+	}
+
+File file = file("components.txt")
+file.setText(json.write())
+file.createNewFile()
