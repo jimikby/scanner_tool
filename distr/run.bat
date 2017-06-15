@@ -1,1 +1,0 @@
-java -jar lib/scanner_tool-1.3.jar com.epam.scanner.ui.AppWindow

@@ -1,44 +1,36 @@
 package com.epam.scanner.config;
 
-import com.epam.scanner.utils.manager.ConfigurationManager;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class AppConfig {
+
+	private static String component = System.getProperty("gradle.components");
 	
-	private static String tdpPath  = ConfigurationManager.getProperty("tdp.path");
-	private static String newTdpPath = ConfigurationManager.getProperty("tdp.new.path");
-	private static String gradlePluginsPath = ConfigurationManager.getProperty("gradle.plugins.path");
-	private static String component;
-	
-	public static String getComponent() {
-		return component;
+	public static List<String> getComponents() {
+
+		List<String> comps = new ArrayList<>();
+
+		for ( String comp : component.split("\\s*,\\s*")) {
+			comps.add ("settings-" + comp + ".gradle");
+		}
+
+		return comps;
 	}
-	
-	public static void setComponent(String component) {
-		AppConfig.component = component;
-	}
-	
+
 	public static String getTdpPath() {
-		return tdpPath;
+		return ".."+ File.separator + "tdp";
 	}
-	
-	public static void setTdpPath(String tdpPath) {
-		AppConfig.tdpPath = tdpPath;
-	}
-	
-	
+
+
 	public static String getNewTdpPath() {
-		return newTdpPath;
-	}
-	
-	public static void setNewTdpPath(String newTdpPath) {
-		AppConfig.newTdpPath = newTdpPath;
+		return ".." + File.separator + "tdp";
 	}
 	
 	public static String getGradlePluginsPath() {
-		return gradlePluginsPath;
+		return ".." + File.separator + "gradle-plugins";
 	}
-	
-	public static void setGradlePluginsPath(String gradlePluginsPath) {
-		AppConfig.gradlePluginsPath = gradlePluginsPath;
-	}
+
 }
