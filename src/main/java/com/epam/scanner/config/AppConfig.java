@@ -1,7 +1,5 @@
 package com.epam.scanner.config;
 
-import org.jetbrains.annotations.Contract;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
