@@ -162,6 +162,7 @@ public class AppService {
                     Properties props = null;
                     if (componentsVersion.get("D:") != null) {
                         props = componentsVersion.get("D:");
+                        LOG.debug("Property " + props);
                         props.setProperty(prop, ComponentVersionManager.getProperty(prop));
                         componentsVersion.put("D:", props);
                     } else {
@@ -201,7 +202,7 @@ public class AppService {
             List<String> result = splitter.splitToList(text);
             List<File> files = new ArrayList<>();
             for (String unbrella : result) {
-                if (unbrella.matches("includeBuild(.*)")) {
+                if (unbrella.matches("(.*)includeBuild(.*)")) {
                     splitter = Splitter.on("includeBuild");
                     List<String> resultSplit = splitter.splitToList(unbrella);
                     splitter = Splitter.on("//");
@@ -209,6 +210,7 @@ public class AppService {
                         resultSplit = splitter.splitToList(resultSplit.get(1));
                         files.add(new File(AppConfig.getTdpPath() + "/"
                                 + resultSplit.get(0).replaceAll("'", "").replaceAll("\"", "").trim()));
+                        LOG.debug(resultSplit);
                     }
                 }
             }

@@ -1,5 +1,7 @@
 package com.epam.scanner.config;
 
+import org.jetbrains.annotations.Contract;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,21 +18,18 @@ public class AppConfig {
 		for ( String comp : component.split("\\s*,\\s*")) {
 			comps.add ("settings-" + comp + ".gradle");
 		}
-
 		return comps;
 	}
 
 	public static String getTdpPath() {
-		return ".."+ File.separator + "tdp";
+		return ".";
 	}
 
-
 	public static String getNewTdpPath() {
-		return ".." + File.separator + "tdp";
+		return ".";
 	}
 	
 	public static String getGradlePluginsPath() {
 		return ".." + File.separator + "gradle-plugins";
 	}
-
 }
